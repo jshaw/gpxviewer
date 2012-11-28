@@ -59,7 +59,7 @@ should do the trick:
         $.ajax({url: filename,
             dataType: "xml",
             success: function(data) {
-              var parser = new GPXParser(data, map);
+              var parser = new GPXParser(data, map); // set a 3rd param true animate the route ie: (data, map, true)
               parser.setTrackColour("#ff0000");     // Set the track line colour
               parser.setTrackWidth(5);          // Set the track line width
               parser.setMinTrackPointDelta(0.001);      // Set the minimum distance between track points
@@ -77,7 +77,7 @@ should do the trick:
         };
         var map = new google.maps.Map(document.getElementById("map"),
             mapOptions);
-        loadGPXFileIntoGoogleMap(map, "pocotrail.xml");
+        loadGPXFileIntoGoogleMap(map, "BikeNov262012.gpx");
     });
 
 
