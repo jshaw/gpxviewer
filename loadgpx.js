@@ -47,12 +47,17 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-function GPXParser(xmlDoc, map) {
+function GPXParser(xmlDoc, map, animate) {
     this.xmlDoc = xmlDoc;
     this.map = map;
     this.trackcolour = "#ff00ff"; // red
     this.trackwidth = 5;
-    this.mintrackpointdelta = 0.0001
+    this.mintrackpointdelta = 0.0001;
+    this.numpoints;
+    this.points = [];
+    this.poly;
+    this.i = 1;
+    this.animate = animate;
 }
 
 // Set the colour of the track line segements.
@@ -170,11 +175,76 @@ GPXParser.prototype.addTrackSegmentToMap = function(trackSegment, colour,
     });
 }
 
+GPXParser.prototype.animateTrackSegment = function(trackSegment, colour, width) {
+    var trackpoints = trackSegment.getElementsByTagName("trkpt");
+    this.numpoints = trackpoints.length;
+
+    if(this.numpoints == 0) {
+        return;
+    }
+
+    var pointarray = [];
+
+    // process first point
+    var lastlon = parseFloat(trackpoints[0].getAttribute("lon"));
+    var lastlat = parseFloat(trackpoints[0].getAttribute("lat"));
+    var latlng = new google.maps.LatLng(lastlat,lastlon);
+    pointarray.push(latlng); 
+
+    for(var i = 1; i < this.numpoints; i++) {
+        var lon = parseFloat(trackpoints[i].getAttribute("lon"));
+        var lat = parseFloat(trackpoints[i].getAttribute("lat"));
+
+        // Verify that this is far enough away from the last point to be used.
+        var latdiff = lat - lastlat;
+        var londiff = lon - lastlon;
+
+        if(Math.sqrt(latdiff*latdiff + londiff*londiff)
+                > this.mintrackpointdelta) {
+            lastlon = lon;
+            lastlat = lat;
+            latlng = new google.maps.LatLng(lat,lon);
+            pointarray.push(latlng);
+        }
+    }
+
+    this.nextPoint(pointarray);
+}
+
+GPXParser.prototype.addPoint = function(pointarray) {
+    if(!this.poly) {
+        this.poly = new google.maps.Polyline();
+    }
+    this.poly.setOptions({ map: this.map, path: this.points });
+}
+
+GPXParser.prototype.nextPoint = function(pointarray) {
+    console.log("this", this);
+    _that = this;
+    var i = _that.i;
+    _that.pointarray = pointarray;
+
+    if(i < _that.pointarray.length ){
+        _that.timer = setTimeout(function(){
+            latlng = new google.maps.LatLng(pointarray[i].lat(), pointarray[i].lng());
+            if(latlng) {
+                _that.points.push(latlng);    
+            }
+            _that.addPoint();
+            _that.i++;
+            _that.nextPoint(_that.pointarray);
+        }, 100);
+    }
+}
+
 GPXParser.prototype.addTrackToMap = function(track, colour, width) {
     var segments = track.getElementsByTagName("trkseg");
     for(var i = 0; i < segments.length; i++) {
-        var segmentlatlngbounds = this.addTrackSegmentToMap(segments[i], colour,
-                width);
+        if ( this.animate ) {
+            var returnsegmentlatlngbounds = this.animateTrackSegment(segments[i], colour, width);
+        } else {
+            var segmentlatlngbounds = this.addTrackSegmentToMap(segments[i], colour, width);
+        }
     }
 }
 
